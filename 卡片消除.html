@@ -1,0 +1,393 @@
+<!-- 声明文档类型 -->
+<!DOCTYPE html>
+<!-- 表示整个网页的主要语言是简体中文 -->
+<html lang="zh-CN">
+    <head>
+        <!-- 三月七 -->
+        <!-- 本网页使用 UTF-8 字符编码来存储和显示文字 -->
+        <meta charset="UTF-8">
+        <!-- 网页宽度应等于设备屏幕宽度，初始缩放比例为 1 -->
+        <meta name="viewport" content="width=device-width,initial-scale=1.0">
+        <!-- 网页名字 -->
+        <title>卡片消消乐</title>
+        <!-- 样式 -->
+        <style>
+            /* 推荐所有元素统一用 border-box */
+            *{
+                padding: 0;
+                margin: 0;
+                box-sizing: border-box;       /* 宽高包含内容、内边距和边框 */
+            }
+            body {
+                background: linear-gradient(135deg,#ffafbd 30%,#ffc3a0 70%);
+                min-height: 100vh;
+                display: flex;            /* 所有直接子元素会立即成为 “弹性项目”，按弹性规则排列 */
+                flex-direction: column;   /* 让子元素纵向排列（从上往下） */
+                align-items: center;       
+            }
+            .game-header {
+                /* 游戏标题 */
+                color: #fff;      
+                /* 水平、垂直、阴影半径、颜色、透明度 */
+                text-shadow: 2px 2px 4px rgba(0, 0, 0,.5);  
+                margin: 20px 0;
+                font-size: 2.5em;      /* 其父元素字体大小的 2.5 倍 */
+            }
+            .remain-card {
+                /* 剩余卡片展示 */
+                color: #fff;
+                margin: 10px 0;
+                font-size: 1.2em;
+            }
+            .circle-button {
+                /* 音频按钮 */
+                width: 60px;
+                height: 60px;
+                background: linear-gradient(135deg,#fc758c 30%,#f79156 70%);
+                border-radius: 50%;               /*就是一个圆 */
+                display: flex;
+                justify-content: center;    /* 主轴居中（水平） */
+                align-items: center;        /* 交叉轴居中（垂直） */
+                font-size: 30px;
+                cursor: pointer;          /* 光标变成小手 */
+                box-shadow: 0 4px 6px rgba(0, 0, 0,.3);
+                position: relative;
+                top: -700px;              /* 表示元素向上移动 570 像素（负值是向上） */
+                right: -200px;            /* 表示元素向右移动 200 像素（负值是向右） */
+                transition: transform 0.3s ease-in-out;        /* 动画0.3s匀速开始 */
+            }
+            .play-area {
+                /* 游戏操作区域 */
+                width: 500px;
+                height: 500px;
+                background: rgba(255, 255, 255, .1);
+                border-radius: 15px;
+                box-shadow: 0 0 30px rgba(0, 0, 0, .2);
+                overflow: hidden;      /* 清除浮动 */
+            }
+            .cell {
+                /* 网格 */
+                width: 25px;
+                height: 25px;
+                float: left;
+                position: relative;
+                border: 1px solid #eee ;
+            }
+            .select-all {
+                /* 选择卡片展示区域 */
+                width: 433px;
+                height: 70px;
+                background: rgba(255, 255, 255, .2);
+                border-radius: 10px;
+                margin: 30px 0;
+                padding: 10px;
+                display: flex;
+                gap: 10px;            /* 在子元素之间添加 10px 的间距 */ 
+                backdrop-filter: blur(5px);      /* 背景模糊 */
+                border: 2px dashed rgba(255, 255, 255, .5);      /* 虚线 */
+            }
+            .select-one {
+                /* 每一个选择卡片展示区域 */
+                width: 50px;
+                height: 50px;
+                background: rgba(255, 255, 255, .5);
+                border-radius: 8px;
+                position: relative;
+                box-shadow: 0 3px 6px rgba(0, 0, 0, .2);
+            }
+            /* 定义音频按钮旋转动画 */
+            .rotate {
+                animation: spin 3s linear infinite;    /* 动画周期为 3 秒、匀速旋转、无限循环播放 */
+            }
+            @keyframes spin{
+                from{
+                    transform: rotate(0deg);
+                }
+                to{
+                    transform: rotate(360deg);
+                }
+            }
+            .card {
+                /* 卡片 */
+                width: 50px;
+                height: 50px;
+                background: linear-gradient(145deg,#fff,#f6f3f3);
+                position: absolute;
+                border-radius: 8px;
+                box-shadow: 0 3px 6px rgba(0, 0, 0, .2);
+                cursor: pointer;
+                transition: all 0.2s;
+                display: flex;
+                justify-content: center;
+                align-items: center;
+                font-size: 30px;
+                color: #2c3e50;
+            }
+            .card:hover {
+                transform: translateY(-6px);
+                box-shadow: 0 5px 10px rgba(0, 0, 0,.3);
+            }
+            .card::before{
+                content: '';
+                position: absolute;
+                top: 2px;
+                right: 2px;
+                bottom: 2px;
+                left: 2px;
+                border: 2px solid rgba(255, 255, 255, .3);
+                border-radius: 6px;
+            }
+            .overlay {
+                /* 遮罩 */
+                width: 50px;
+                height: 50px;
+                background: rgba(255, 255, 255, .5);
+                position: absolute;
+                border-radius: 8px;
+                backdrop-filter: blur(2px);
+            }
+        </style>
+    </head>
+    <body>
+        <!-- 标题 -->
+        <h1 class="game-header">卡片消消乐</h1>
+        <!-- 剩余卡片数量展示 -->
+        <div class="remain-card">剩余卡片：<span id="remain-quantity">0</span></div>
+        <!-- 卡片展示区域 -->
+        <div class="play-area"></div>
+        <!-- 已选择卡片的展示区域：最多选择七个 -->
+        <div class="select-all">
+            <div class="select-one"></div>
+            <div class="select-one"></div>
+            <div class="select-one"></div>
+            <div class="select-one"></div>
+            <div class="select-one"></div>
+            <div class="select-one"></div>
+            <div class="select-one"></div>
+        </div>
+        <!-- 循环音乐按钮 -->
+        <div class="circle-button" id="play-pause-btn">🎵</div>
+        <!-- 背景音乐 -->
+        <audio id="background-music" loop>
+            <source src="三月七.ogg" type="audio/ogg"/>
+            您的浏览器不支持音频播放
+        </audio>
+    </body>
+    <script>
+        // 获取音频元素和按钮
+        const audio = document.getElementById('background-music')
+        const button = document.getElementById('play-pause-btn')
+        // 初始化音频状态
+        let isPlaying = false
+        // 给按钮绑定事件
+        button.addEventListener('click',function(){
+            if(isPlaying){
+                // 暂停播放
+                audio.pause()
+                // 暂停旋转
+                button.classList.remove('rotate')
+            }else{
+                // 开始播放
+                audio.play().catch(err=>{
+                    console.log('播放失败',err)
+                })
+                // 开始旋转
+                button.classList.add('rotate')
+            }
+            // 切换状态
+            isPlaying = !isPlaying
+        })
+        
+        // 初始化游戏
+        const playArea = document.querySelector('.play-area')
+        // 网格映射
+        const gridMap = {}
+        // 卡片图案
+        const symbols = ['🐍','🐎','🐱','🐇','🐂','🐖','🐏','🐉','🐅']
+
+        // 创建网格布局
+        for(let row = 0; row < 20; row++){
+            for(let col = 0; col < 20; col++){
+                const cell = document.createElement('div')
+                cell.className = 'cell'
+                playArea.appendChild(cell)
+                gridMap[`${col}-${row}`] = cell
+            }
+        }
+
+        //卡片管理
+        let cardList = []
+        // 已选择卡片
+        let selectedCards = []
+        // 一个数组，包含7个卡槽元素
+        const selectAll = document.querySelectorAll('.select-one')
+        // 剩余卡片数量元素
+        const remainQuantity = document.getElementById('remain-quantity')
+
+        //生成具体卡片元素
+        function createCard(row,col,level){
+            const card = document.createElement('div')
+            card.className = 'card'
+            card.style.zIndex = 10 - level
+            // 存储卡片坐标
+            card.dataset.index = `${col}-${row}`
+            return card
+        }
+       
+        // 检查卡片位置是否有效
+        // layout为卡片的二维数组 0为空,1为有
+        function isValid(row,col,layout){
+            // 检查左,左上,上,右上四个方向
+            return ![layout[row][col-1],
+                    layout[row-1]?.[col-1],
+                    layout[row-1]?.[col],
+                    layout[row-1]?.[col+1]
+            ].includes(1)
+        }
+    
+        //生成卡片布局
+        function generateLayout(level){
+            //初始化layout
+            const layout = Array.from({length:20},()=>Array(20).fill(0))
+            //根据level确定生成范围
+            for (let i = level; i < 19 - level; i++){
+                for (let j = 1; j < 10; j++){
+                    // 20%生成卡片，并检查位置是否有效
+                    if (Math.random() < 0.2 && isValid(i,j,layout)){
+                        layout[i][j] = 1;
+                        layout[i][18-j] = 1;
+                    }
+                }
+            }
+
+            //根据layout创建卡片并添加到DOM
+            layout.forEach((row,i) => {
+                row.forEach((val,j) => {
+                    if (val === 1){
+                        const card = createCard(i,j,level);
+                        gridMap[`${j}-${i}`].appendChild(card);
+                        cardList.push(card);
+                    }
+                })
+            })
+        }
+
+        // 初始化卡片
+        for (i = 7; i > 0; i--) generateLayout(i)
+
+        //更新卡片剩余数量
+        function updateQuantity(){
+            remainQuantity.textContent = cardList.length
+        }
+
+        // 移除多余的卡片，保证是3的倍数
+        const extra = cardList.length % 3
+        if (extra !== 0){
+            const toRemove = cardList.splice(-extra,extra)
+            toRemove.forEach(card => card.parentNode.removeChild(card))
+        }
+        updateQuantity()
+
+        //分配图案
+        const patternList = []
+        const totalGroups = Math.floor(cardList.length / 3)
+        for (let i = 0; i < totalGroups; i++){
+            patternList.push(...Array(3).fill(symbols[i % symbols.length]))
+        }
+        // patternList.sort(() => Math.random -0.5)
+        shuffle(patternList)
+        cardList.forEach((card,i)=>{
+            card.textContent = patternList[i]
+            card.dataset.type = patternList[i]
+        })
+
+        // 洗牌算法
+        function shuffle(array){
+            for (let i = array.length -1; i > 0; i--){
+                const j = Math.floor(Math.random() * (i + 1));
+                [array[i],array[j]] = [array[j],array[i]];
+                return array
+            }
+        }
+
+        //给被遮住的卡片封装遮罩层
+        function renderOverlay(){
+            document.querySelectorAll('.overlay').forEach(mask => mask.remove())
+            cardList.forEach(card => {
+                const rect = card.getBoundingClientRect()      // 获取相对于视口的xy坐标
+                const points = [
+                    // card的四个角
+                    [rect.left,rect.top],
+                    [rect.left + 49,rect.top],
+                    [rect.left,rect.top + 49],
+                    [rect.left + 49,rect.top + 49]
+                ]
+                // 该点是否被覆盖
+                const isCovered = points.some(([x,y]) => {
+                    const el = document.elementFromPoint(x,y)
+                    return el !== card && cardList.includes(el)
+                })
+                //添加遮罩层
+                if (isCovered){
+                    const overlay = document.createElement('div')
+                    overlay.className = 'overlay'
+                    overlay.style.zIndex = card.style.zIndex
+                    card.parentNode.appendChild(overlay)
+                }
+            })
+        }
+        renderOverlay()
+
+        // 游戏逻辑
+        playArea.addEventListener('click', function(e){
+            if(!e.target.classList.contains('card')) return;
+            const card = e.target;
+            card.parentNode.removeChild(card);
+            cardList = cardList.filter(t => t !== card);            //过滤，满足条件则保留下来
+            updateQuantity();          //更新剩余数量
+
+            selectedCards.push(card);
+            if (selectedCards.length > 7) endGame()
+            checkMatches()
+            renderOverlay();            // 重新渲染遮罩层
+            updateSelectAll()
+        })
+
+        // 更新选择槽中的卡片显示
+        function updateSelectAll(){
+            selectAll.forEach(selectOne => selectOne.innerHTML = '')
+            selectedCards.forEach((card,i) => {
+                const clone = card.cloneNode(true)
+                clone.style.position = 'static'
+                selectAll[i].appendChild(clone)
+            })
+        }
+
+        //检查卡片槽里是否有三个可以消除
+        function checkMatches(){
+            const countMap = selectedCards.reduce((acc,card)=>{
+                acc[card.dataset.type] = (acc[card.dataset.type] || 0) + 1
+                return acc
+            },{})
+            Object.entries(countMap).forEach(([type,count])=>{
+                if(count >= 3){
+                    selectedCards = selectedCards.filter(card => card.dataset.type !== type)
+                }
+            }) 
+        }
+
+        // 游戏失败处理
+        function endGame(){
+            alert('游戏失败！请重新开始！')
+            location.reload()
+        }
+
+        // 定时检查游戏是否通关
+        setInterval(() => {
+            if (cardList.length === 0 && selectedCards.length === 0){
+                alert('恭喜通关！')
+                location.reload()
+            }
+        }, 1000);
+    </script>
+</html>
